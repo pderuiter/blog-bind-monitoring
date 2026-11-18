@@ -1,0 +1,15 @@
+---
+monitoring_stack_enabled: true
+monitoring_stack_dir: /opt/bind-monitoring
+# Run bind_exporter in the compose project. Defaults to true unless bind_exporter_method is "systemd".
+monitoring_stack_include_exporter: "{{ (bind_exporter_method | default('compose')) == 'compose' }}"
+monitoring_stack_prometheus_image: prom/prometheus:v3.16.0
+monitoring_stack_alertmanager_image: prom/alertmanager:v0.33.1
+monitoring_stack_grafana_image: grafana/grafana:13.3.1
+monitoring_stack_exporter_image: prometheuscommunity/bind-exporter:v0.7.0
+monitoring_stack_stats_url: http://127.0.0.1:8053/
+monitoring_stack_stats_groups: server,view,tasks
+# instance label for this BIND server in Prometheus
+monitoring_stack_instance: "{{ inventory_hostname }}"
+monitoring_stack_scrape_interval: 15s
+monitoring_stack_grafana_admin_password: ""

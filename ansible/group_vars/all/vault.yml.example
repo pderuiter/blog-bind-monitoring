@@ -1,0 +1,4 @@
+---
+# Copy to vault.yml, set the values and encrypt it:
+#   ansible-vault encrypt group_vars/all/vault.yml
+vault_monitoring_stack_grafana_admin_password: change-me

@@ -1,0 +1,11 @@
+# {{ monitoring_stack_dir }}/alertmanager/alertmanager.yml
+# {{ ansible_managed }}
+# Minimal configuration: every alert goes to one receiver without notifications.
+# Add email_configs, slack_configs or webhook_configs to the receiver to get notified.
+
+route:
+  receiver: default
+  group_by: ['alertname', 'instance']
+
+receivers:
+  - name: default

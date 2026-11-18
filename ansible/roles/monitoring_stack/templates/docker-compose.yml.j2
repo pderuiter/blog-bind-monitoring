@@ -1,0 +1,70 @@
+# {{ monitoring_stack_dir }}/docker-compose.yml
+# {{ ansible_managed }}
+
+services:
+  prometheus:
+    image: {{ monitoring_stack_prometheus_image }}
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - monitoring
+
+  grafana:
+    image: {{ monitoring_stack_grafana_image }}
+    container_name: grafana
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring
+
+  alertmanager:
+    image: {{ monitoring_stack_alertmanager_image }}
+    container_name: alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./alertmanager:/etc/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    ports:
+      - "9093:9093"
+    networks:
+      - monitoring
+{% if monitoring_stack_include_exporter | bool %}
+
+  # Host network: the statistics channel only listens on 127.0.0.1:8053 (allow localhost).
+  # The exporter listens on the host's port 9119; Prometheus reaches it via host.docker.internal.
+  bind_exporter:
+    image: {{ monitoring_stack_exporter_image }}
+    container_name: bind_exporter
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - '--bind.stats-url={{ monitoring_stack_stats_url }}'
+      - '--bind.stats-groups={{ monitoring_stack_stats_groups }}'
+{% endif %}
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  monitoring:
+    driver: bridge

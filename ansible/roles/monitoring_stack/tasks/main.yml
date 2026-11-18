@@ -1,0 +1,101 @@
+---
+- name: Deploy the monitoring stack
+  when: monitoring_stack_enabled | bool
+  block:
+    - name: Check that a Grafana admin password is set
+      ansible.builtin.assert:
+        that:
+          - monitoring_stack_grafana_admin_password | length > 0
+        fail_msg: "Set vault_monitoring_stack_grafana_admin_password (see group_vars/all/vault.yml.example)"
+        quiet: true
+
+    - name: Install Docker and the compose plugin
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Enable and start Docker
+      ansible.builtin.service:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Create the stack directories
+      ansible.builtin.file:
+        path: "{{ monitoring_stack_dir }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - ""
+        - prometheus
+        - prometheus/rules
+        - alertmanager
+        - grafana/provisioning/datasources
+
+    - name: Write the compose file
+      ansible.builtin.template:
+        src: docker-compose.yml.j2
+        dest: "{{ monitoring_stack_dir }}/docker-compose.yml"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Write the Grafana admin password to the compose .env file
+      ansible.builtin.template:
+        src: env.j2
+        dest: "{{ monitoring_stack_dir }}/.env"
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+
+    - name: Write the Prometheus configuration
+      ansible.builtin.template:
+        src: prometheus.yml.j2
+        dest: "{{ monitoring_stack_dir }}/prometheus/prometheus.yml"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart the monitoring stack
+
+    - name: Install the alerting rules
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ monitoring_stack_dir }}/prometheus/rules/{{ item }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - bind.yml
+        - bind_security.yml
+      notify: Restart the monitoring stack
+
+    - name: Write the Alertmanager configuration
+      ansible.builtin.template:
+        src: alertmanager.yml.j2
+        dest: "{{ monitoring_stack_dir }}/alertmanager/alertmanager.yml"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart the monitoring stack
+
+    - name: Provision the Grafana Prometheus datasource
+      ansible.builtin.template:
+        src: datasource.yml.j2
+        dest: "{{ monitoring_stack_dir }}/grafana/provisioning/datasources/prometheus.yml"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart the monitoring stack
+
+    - name: Start the monitoring stack
+      community.docker.docker_compose_v2:
+        project_src: "{{ monitoring_stack_dir }}"
+        state: present
+        pull: missing

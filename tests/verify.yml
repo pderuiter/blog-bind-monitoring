@@ -1,0 +1,103 @@
+---
+# Functional checks from the post. Run after site.yml:
+#   ansible-playbook tests/verify.yml
+- name: Verify BIND monitoring
+  hosts: dns_servers
+  gather_facts: false
+  vars:
+    verify_stack: "{{ monitoring_stack_enabled | default(true) }}"
+    verify_grafana_password: "{{ monitoring_stack_grafana_admin_password | default(vault_monitoring_stack_grafana_admin_password) }}"
+  tasks:
+    - name: Generate some DNS traffic
+      ansible.builtin.command: "dig @127.0.0.1 {{ item }} +short"
+      loop:
+        - example.com
+        - example.org
+        - nonexistent.example.com
+      changed_when: false
+
+    - name: Check the statistics channel (JSON)
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8053/json/v1/server
+      register: verify_stats
+
+    - name: Check that query logging is on
+      ansible.builtin.command: rndc status
+      register: verify_rndc
+      changed_when: false
+
+    - name: Read the exporter metrics
+      ansible.builtin.uri:
+        url: http://127.0.0.1:9119/metrics
+        return_content: true
+      register: verify_metrics
+      until: verify_metrics.status == 200
+      retries: 15
+      delay: 4
+
+    - name: Check the statistics channel and the exporter
+      ansible.builtin.assert:
+        that:
+          - verify_stats.json.opcodes is defined
+          - verify_rndc.stdout is search('query logging is ON')
+          - verify_metrics.content is search('(?m)^bind_up 1$')
+          - verify_metrics.content is search('bind_incoming_queries_total')
+
+    - name: Check the Docker Compose stack
+      when: verify_stack | bool
+      block:
+        - name: Wait for the Prometheus bind target to be up
+          ansible.builtin.uri:
+            url: http://127.0.0.1:9090/api/v1/targets
+            return_content: true
+          register: verify_targets
+          until: >-
+            verify_targets.json is defined and
+            (verify_targets.json.data.activeTargets | selectattr('health', 'equalto', 'up') | list | length) == 2
+          retries: 20
+          delay: 5
+
+        - name: Read the loaded alerting rules
+          ansible.builtin.uri:
+            url: http://127.0.0.1:9090/api/v1/rules
+          register: verify_rules
+
+        - name: Read the Prometheus Alertmanager discovery
+          ansible.builtin.uri:
+            url: http://127.0.0.1:9090/api/v1/alertmanagers
+          register: verify_am_discovery
+
+        - name: Check that Alertmanager is ready
+          ansible.builtin.uri:
+            url: http://127.0.0.1:9093/-/ready
+          register: verify_alertmanager
+          until: verify_alertmanager.status == 200
+          retries: 10
+          delay: 3
+
+        - name: Check the Grafana Prometheus datasource
+          ansible.builtin.uri:
+            url: http://127.0.0.1:3000/api/datasources/uid/prometheus/health
+            url_username: admin
+            url_password: "{{ verify_grafana_password }}"
+            force_basic_auth: true
+          register: verify_grafana
+          # Grafana loads its bundled plugins on first start, which can take a few minutes.
+          until: verify_grafana.status == 200
+          retries: 40
+          delay: 6
+          no_log: true
+
+        - name: Query BIND metrics through Prometheus
+          ansible.builtin.uri:
+            url: http://127.0.0.1:9090/api/v1/query?query=bind_up
+          register: verify_query
+
+        - name: Check the stack results
+          ansible.builtin.assert:
+            that:
+              - verify_rules.json.data.groups | map(attribute='name') | sort == ['bind', 'bind_security']
+              - (verify_rules.json.data.groups | map(attribute='rules') | flatten | length) == 9
+              - verify_am_discovery.json.data.activeAlertmanagers | length == 1
+              - verify_grafana.json.status == 'OK'
+              - verify_query.json.data.result[0].value[1] == '1'

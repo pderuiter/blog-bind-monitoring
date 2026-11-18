@@ -1,0 +1,37 @@
+---
+# Security-focused alerts
+groups:
+  - name: bind_security
+    rules:
+      # Possible DNS amplification attack
+      - alert: BindPossibleAmplificationAttack
+        expr: |
+          sum(rate(bind_incoming_queries_total{type="ANY"}[5m])) by (instance) > 100
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Possible DNS amplification attack on {{ $labels.instance }}"
+          description: "High rate of ANY queries detected"
+
+      # Unusual NXDOMAIN rate (possible enumeration)
+      - alert: BindHighNxdomainRate
+        expr: |
+          sum(rate(bind_responses_total{result="NXDOMAIN"}[5m])) by (instance) /
+          sum(rate(bind_responses_total[5m])) by (instance) > 0.3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High NXDOMAIN rate on {{ $labels.instance }}"
+          description: "NXDOMAIN rate is {{ $value | humanizePercentage }}"
+
+      # Query flood detection
+      - alert: BindQueryFlood
+        expr: sum(rate(bind_incoming_queries_total[1m])) by (instance) > 5000
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "DNS query flood on {{ $labels.instance }}"
+          description: "Query rate: {{ $value }} q/s"

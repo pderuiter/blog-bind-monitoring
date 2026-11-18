@@ -1,0 +1,43 @@
+---
+- name: Validate the exporter method
+  ansible.builtin.assert:
+    that:
+      - bind_exporter_method in ['compose', 'systemd']
+    fail_msg: "bind_exporter_method must be compose or systemd"
+    quiet: true
+
+- name: Install bind_exporter with systemd
+  when: bind_exporter_method == 'systemd'
+  block:
+    - name: Download and extract the bind_exporter release
+      ansible.builtin.unarchive:
+        src: "{{ bind_exporter_url }}"
+        dest: /opt
+        remote_src: true
+        creates: "/opt/bind_exporter-{{ bind_exporter_version }}.linux-amd64/bind_exporter"
+
+    - name: Install the bind_exporter binary
+      ansible.builtin.copy:
+        src: "/opt/bind_exporter-{{ bind_exporter_version }}.linux-amd64/bind_exporter"
+        dest: /usr/local/bin/bind_exporter
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart bind_exporter
+
+    - name: Install the bind_exporter systemd unit
+      ansible.builtin.template:
+        src: bind_exporter.service.j2
+        dest: /etc/systemd/system/bind_exporter.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart bind_exporter
+
+    - name: Enable and start bind_exporter
+      ansible.builtin.systemd_service:
+        name: bind_exporter
+        enabled: true
+        state: started
+        daemon_reload: true

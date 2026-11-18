@@ -1,0 +1,66 @@
+---
+groups:
+  - name: bind
+    rules:
+      # High query rate
+      - alert: BindHighQueryRate
+        expr: sum(rate(bind_incoming_queries_total[5m])) by (instance) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High DNS query rate on {{ $labels.instance }}"
+          description: "Query rate is {{ $value }} queries/sec"
+
+      # SERVFAIL rate too high
+      - alert: BindHighServfailRate
+        expr: |
+          sum(rate(bind_responses_total{result="SERVFAIL"}[5m])) by (instance) /
+          sum(rate(bind_responses_total[5m])) by (instance) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High SERVFAIL rate on {{ $labels.instance }}"
+          description: "SERVFAIL rate is {{ $value | humanizePercentage }}"
+
+      # Low cache hit rate
+      - alert: BindLowCacheHitRate
+        expr: |
+          1 - (sum(rate(bind_query_recursions_total[5m])) by (instance) /
+               sum(rate(bind_incoming_queries_total[5m])) by (instance)) < 0.7
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low cache hit rate on {{ $labels.instance }}"
+          description: "Cache hit rate is {{ $value | humanizePercentage }}"
+
+      # Recursive clients exhausted
+      - alert: BindRecursiveClientsHigh
+        expr: bind_recursive_clients > 900
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High recursive clients on {{ $labels.instance }}"
+          description: "Recursive clients: {{ $value }} (default max: 1000)"
+
+      # Zone transfer failures
+      - alert: BindZoneTransferFailure
+        expr: increase(bind_zone_transfer_failure_total[1h]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Zone transfer failure on {{ $labels.instance }}"
+          description: "Zone transfers have failed in the last hour"
+
+      # Exporter down
+      - alert: BindExporterDown
+        expr: up{job="bind"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "BIND exporter down on {{ $labels.instance }}"

@@ -1,0 +1,23 @@
+---
+- name: Create the BIND log directory
+  ansible.builtin.file:
+    path: "{{ bind_statistics_log_dir }}"
+    state: directory
+    owner: "{{ bind_install_user }}"
+    group: "{{ bind_install_group }}"
+    mode: "0750"
+
+- name: Configure the statistics channel and query logging
+  ansible.builtin.template:
+    src: named.conf.options.j2
+    dest: "{{ bind_install_options_conf }}"
+    owner: root
+    group: "{{ bind_install_group }}"
+    mode: "0640"
+    validate: named-checkconf %s
+  notify: Restart named
+
+- name: Start named
+  ansible.builtin.service:
+    name: "{{ bind_install_service }}"
+    state: started

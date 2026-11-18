@@ -1,0 +1,10 @@
+---
+# Where bind_exporter runs: "compose" (in the Docker Compose stack, host network) or
+# "systemd" (the tarball install with the systemd unit from the post). Pick one: both use port 9119.
+bind_exporter_method: compose
+
+# Deploy Prometheus, Alertmanager and Grafana with Docker Compose.
+monitoring_stack_enabled: true
+
+# Grafana admin password, from the vault (see vault.yml.example).
+monitoring_stack_grafana_admin_password: "{{ vault_monitoring_stack_grafana_admin_password }}"

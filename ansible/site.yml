@@ -1,0 +1,8 @@
+---
+- name: BIND with Prometheus, Alertmanager and Grafana monitoring
+  hosts: dns_servers
+  roles:
+    - role: bind_install
+    - role: bind_statistics
+    - role: bind_exporter
+    - role: monitoring_stack

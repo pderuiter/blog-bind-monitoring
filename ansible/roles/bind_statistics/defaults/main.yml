@@ -1,0 +1,6 @@
+---
+bind_statistics_port: 8053
+bind_statistics_zone_statistics: full
+# Keep query logging on across rndc reconfig/reload (querylog yes).
+bind_statistics_querylog: true
+bind_statistics_log_dir: /var/log/named

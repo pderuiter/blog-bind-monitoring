@@ -1,0 +1,21 @@
+# /etc/systemd/system/bind_exporter.service
+# {{ ansible_managed }}
+
+[Unit]
+Description=BIND Exporter for Prometheus
+After=network.target named.service
+Wants=named.service
+
+[Service]
+Type=simple
+User=nobody
+Group=nogroup
+ExecStart=/usr/local/bin/bind_exporter \
+    --bind.stats-url={{ bind_exporter_stats_url }} \
+    --bind.stats-groups={{ bind_exporter_stats_groups }} \
+    --web.listen-address={{ bind_exporter_listen_address }}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

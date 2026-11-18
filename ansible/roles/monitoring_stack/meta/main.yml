@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: monitoring_stack
+  author: Patrick de Ruiter
+  description: Prometheus, Alertmanager, Grafana and bind_exporter with Docker Compose
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - noble
+dependencies: []
