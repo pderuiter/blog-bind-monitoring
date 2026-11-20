@@ -8,7 +8,7 @@ It builds the post's monitoring setup on one DNS server:
 - BIND with the statistics channel on 127.0.0.1:8053 and [::1]:8053 (`allow { localhost; }`),
   `zone-statistics full`, and the post's query and security logging (`querylog yes`, so it survives
   `rndc reconfig`)
-- bind_exporter v0.7.0 on port 9119, either
+- bind_exporter v0.8.0 on port 9119 (statistics groups `server,view`; BIND 9.20 has no task statistics), either
   - in the Docker Compose stack (default), with `network_mode: host` so it can reach the localhost-only
     statistics channel, or
   - from the release tarball with the post's systemd unit (`bind_exporter_method: systemd`)
@@ -58,13 +58,13 @@ Prometheus is on port 9090, Alertmanager on 9093 and Grafana on 3000 (user `admi
 | Variable | Default | Description |
 | --- | --- | --- |
 | `bind_exporter_method` | `compose` | `compose` (exporter in the stack) or `systemd` (tarball + systemd unit) |
-| `bind_exporter_version` | `0.7.0` | Exporter release for the systemd method |
+| `bind_exporter_version` | `0.8.0` | Exporter release for the systemd method |
 | `bind_statistics_port` | `8053` | Statistics channel port |
 | `bind_statistics_querylog` | `true` | Write `querylog yes;` |
 | `monitoring_stack_enabled` | `true` | Deploy Prometheus, Alertmanager and Grafana with Docker Compose |
 | `monitoring_stack_dir` | `/opt/bind-monitoring` | Compose project directory |
 | `monitoring_stack_instance` | inventory hostname | `instance` label of the BIND target |
-| `monitoring_stack_*_image` | pinned tags | Prometheus v3.16.0, Alertmanager v0.33.1, Grafana 13.3.1, bind-exporter v0.7.0 |
+| `monitoring_stack_*_image` | pinned tags | Prometheus v3.16.0, Alertmanager v0.33.1, Grafana 13.3.1, bind-exporter v0.8.0 |
 | `vault_monitoring_stack_grafana_admin_password` | (vault) | Grafana admin password, written to the compose `.env` file |
 
 ## Layout

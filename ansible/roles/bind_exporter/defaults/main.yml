@@ -2,9 +2,9 @@
 # compose: run the exporter in the monitoring_stack compose project (host network).
 # systemd: install the release tarball with the systemd unit from the post.
 bind_exporter_method: compose
-bind_exporter_version: "0.7.0"
+bind_exporter_version: "0.8.0"
 bind_exporter_stats_url: http://127.0.0.1:8053/
-bind_exporter_stats_groups: server,view,tasks
+bind_exporter_stats_groups: server,view
 bind_exporter_listen_address: ":9119"
 bind_exporter_release_base: https://github.com/prometheus-community/bind_exporter/releases/download
 bind_exporter_url: "{{ bind_exporter_release_base }}/v{{ bind_exporter_version }}/bind_exporter-{{ bind_exporter_version }}.linux-amd64.tar.gz"
